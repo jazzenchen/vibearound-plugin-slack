@@ -11,6 +11,7 @@ import path from "node:path";
 import { App } from "@slack/bolt";
 import type { GenericMessageEvent } from "@slack/types";
 import type { Agent, ContentBlock } from "@vibearound/plugin-channel-sdk";
+import { extractErrorMessage } from "@vibearound/plugin-channel-sdk";
 import type { AgentStreamHandler } from "./agent-stream.js";
 import { downloadSlackFile } from "./media-download.js";
 
@@ -139,11 +140,7 @@ export class SlackBot {
         this.log("info", `prompt done chat=${chatId} stopReason=${response.stopReason}`);
         this.streamHandler?.onTurnEnd(chatId);
       } catch (error: unknown) {
-        const errMsg = error instanceof Error
-          ? error.message
-          : typeof error === "object" && error !== null && "message" in error
-            ? String((error as { message: unknown }).message)
-            : String(error);
+        const errMsg = extractErrorMessage(error);
         this.log("error", `prompt failed chat=${chatId}: ${errMsg}`);
         this.streamHandler?.onTurnError(chatId, errMsg);
       } finally {
@@ -180,11 +177,7 @@ export class SlackBot {
           this.log("info", `slash prompt done chat=${chatId} stopReason=${response.stopReason}`);
           this.streamHandler?.onTurnEnd(chatId);
         } catch (error: unknown) {
-          const errMsg = error instanceof Error
-            ? error.message
-            : typeof error === "object" && error !== null && "message" in error
-              ? String((error as { message: unknown }).message)
-              : String(error);
+          const errMsg = extractErrorMessage(error);
           this.log("error", `slash prompt failed chat=${chatId}: ${errMsg}`);
           this.streamHandler?.onTurnError(chatId, errMsg);
         }
