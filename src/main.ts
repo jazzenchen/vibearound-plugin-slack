@@ -6,7 +6,7 @@
  * Communicates via ACP protocol (JSON-RPC 2.0 over stdio).
  *
  * Plugin = ACP Client, Host = ACP Agent.
- * Plugin sends prompt() with channelId as sessionId.
+ * Plugin sends prompt() with chatId as sessionId.
  * Host streams back via sessionUpdate notifications.
  */
 
@@ -29,6 +29,6 @@ runChannelPlugin({
       log,
       cacheDir,
     ),
-  createStreamHandler: (bot, log, verbose) =>
+  createRenderer: (bot, log, verbose) =>
     new AgentStreamHandler(bot, log, verbose),
 });

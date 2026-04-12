@@ -190,8 +190,8 @@ export class SlackBot {
       const channelId = (body as any).channel?.id;
       if (!channelId) return;
 
-      this.agent.extNotification?.("channel/callback", {
-        channelId: `slack:${channelId}`,
+      this.agent.extNotification?.("_va/callback", {
+        chatId: channelId,
         callbackId: (action as any).action_id,
         sender: {
           id: (body as any).user?.id ?? "",

@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@slack/bolt": "^4.1.0",
-    "@vibearound/plugin-channel-sdk": "^0.1.2"
+    "@vibearound/plugin-channel-sdk": "file:../channel-sdk"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
