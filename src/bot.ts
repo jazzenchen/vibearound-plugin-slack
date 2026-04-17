@@ -122,15 +122,13 @@ export class SlackBot {
 
       if (contentBlocks.length === 0) return;
 
+      // If a permission prompt is awaiting text, consume this message and stop.
+      if (text && this.streamHandler?.consumePendingText(chatId, text)) {
+        return;
+      }
+
       // Notify stream handler before prompt
       this.streamHandler?.onPromptSent(chatId);
-
-      // Add hourglass reaction as typing indicator
-      await this.app.client.reactions.add({
-        channel: chatId,
-        timestamp: msg.ts,
-        name: "hourglass_flowing_sand",
-      }).catch(() => {});
 
       try {
         const response = await this.agent.prompt({
@@ -143,13 +141,6 @@ export class SlackBot {
         const errMsg = extractErrorMessage(error);
         this.log("error", `prompt failed chat=${chatId}: ${errMsg}`);
         this.streamHandler?.onTurnError(chatId, errMsg);
-      } finally {
-        // Remove hourglass reaction
-        await this.app.client.reactions.remove({
-          channel: chatId,
-          timestamp: msg.ts,
-          name: "hourglass_flowing_sand",
-        }).catch(() => {});
       }
     });
 
@@ -184,7 +175,46 @@ export class SlackBot {
       });
     }
 
-    // Handle interactive actions (button clicks from permission prompts, etc.)
+    // Handle permission button clicks — route back to renderer's pending
+    // promise and replace the message so the buttons disappear.
+    this.app.action(/^va_permission_.*/, async ({ action, ack, respond }) => {
+      await ack();
+      try {
+        const raw = (action as any).value;
+        const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+        const callbackId = parsed?.callbackId;
+        const optionId = parsed?.optionId;
+        const optionName = parsed?.optionName ?? optionId ?? "";
+        if (!callbackId || !optionId) return;
+
+        const ok = this.streamHandler?.resolvePermission(callbackId, optionId) ?? false;
+        this.log("info", `permission resolve cb=${callbackId} option=${optionId} ok=${ok}`);
+
+        // Replace the original message. `replace_original: true` tells Slack
+        // to swap the message in place — buttons are gone, no double-click.
+        await respond({
+          replace_original: true,
+          text: ok
+            ? `🔐 Permission — selected: *${optionName}*`
+            : `🔐 Permission — request already handled`,
+          blocks: [
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text: ok
+                  ? `🔐 Permission — selected: *${optionName}*`
+                  : `🔐 Permission — request already handled`,
+              },
+            },
+          ],
+        });
+      } catch (e) {
+        this.log("error", `permission action parse failed: ${e}`);
+      }
+    });
+
+    // Handle other interactive actions (generic callbacks to host).
     this.app.action(/^va_action_.*/, async ({ action, ack, body }) => {
       await ack();
       const channelId = (body as any).channel?.id;
